@@ -100,6 +100,40 @@ menu = st.sidebar.radio("Menu", ["Browse", "Post Property", "Saved"])
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+st.markdown("""
+<style>
+
+/* SIDEBAR DARK THEME */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0f2027, #203a43, #2c5364);
+}
+
+/* SIDEBAR TEXT */
+[data-testid="stSidebar"] * {
+    color: white !important;
+}
+
+/* SIDEBAR RADIO BUTTON */
+[data-testid="stSidebar"] .stRadio label {
+    color: white !important;
+}
+
+/* SIDEBAR TITLE */
+[data-testid="stSidebar"] h1, 
+[data-testid="stSidebar"] h2, 
+[data-testid="stSidebar"] h3 {
+    color: #00ffcc !important;
+}
+
+/* SIDEBAR BUTTON */
+[data-testid="stSidebar"] .stButton>button {
+    background: linear-gradient(45deg, #00c6ff, #0072ff);
+    color: white;
+    border-radius: 8px;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 # ================= POST PROPERTY =================
 if menu == "Post Property":

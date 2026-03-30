@@ -4,77 +4,7 @@ import sqlite3
 import os
 
 # -------------------- CONFIG --------------------
-st.set_page_config(page_title="NSSI Land", layout="centered")
-# -------------------- BACKGROUND IMAGE --------------------
-page_bg_img = """
-<style>
-[data-testid="stAppViewContainer"] {
-    background-image: url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-}
-
-/* Make content readable */
-[data-testid="stHeader"], [data-testid="stToolbar"] {
-    background: rgba(0,0,0,0);
-}
-
-.main {
-    background-color: rgba(255, 255, 255, 0.85);
-    padding: 20px;
-    border-radius: 10px;
-}
-</style>
-"""
-
-st.markdown(page_bg_img, unsafe_allow_html=True)
-# -------------------- WHITE TEXT STYLE --------------------
-st.markdown("""
-<style>
-
-/* All text white */
-html, body, [class*="css"] {
-    color: white !important;
-}
-
-/* Labels & headings */
-label, .stMarkdown, .stText, h1, h2, h3, h4, h5, h6 {
-    color: white !important;
-}
-
-/* Input fields text */
-input, textarea {
-    color: white !important;
-    background-color: rgba(0,0,0,0.4) !important;
-}
-
-/* Placeholder text */
-::placeholder {
-    color: #ddd !important;
-}
-
-/* Buttons */
-.stButton>button {
-    background-color: rgba(0,0,0,0.6);
-    color: white !important;
-    border: 1px solid white;
-}
-
-/* Sidebar (if used) */
-[data-testid="stSidebar"] {
-    color: white !important;
-}
-
-/* Expander */
-details {
-    color: white !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
+st.set_page_config(page_title="NSSI Land", layout="wide")
 
 # -------------------- DATABASE --------------------
 conn = sqlite3.connect("nssi.db", check_same_thread=False)
@@ -87,102 +17,129 @@ CREATE TABLE IF NOT EXISTS properties (
     location TEXT,
     price TEXT,
     details TEXT,
-    image TEXT
-)
-""")
-
-c.execute("""
-CREATE TABLE IF NOT EXISTS leads (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    phone TEXT
+    images TEXT
 )
 """)
 
 conn.commit()
 
-# -------------------- TITLE --------------------
-st.title("🏡 NSSI Land Promoters - Calicut")
+# -------------------- STYLE --------------------
+st.markdown("""
+<style>
+[data-testid="stAppViewContainer"] {
+    background-image: url("https://images.unsplash.com/photo-1600607687939-ce8a6c25118c");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+[data-testid="stAppViewContainer"]::before {
+    content: "";
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    z-index: -1;
+}
+
+html, body, [class*="css"] {
+    color: white !important;
+}
+
+.property-card {
+    background: rgba(255,255,255,0.08);
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 15px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.title("NSSI Land Promoters - Calicut")
 
 # Create uploads folder
 if not os.path.exists("uploads"):
     os.makedirs("uploads")
 
-# -------------------- POST PROPERTY --------------------
-st.header("📢 Post Property")
+# -------------------- LAYOUT --------------------
+left, right = st.columns([1, 2])
 
-owner = st.text_input("Owner Name")
-location = st.text_input("Location")
-price = st.text_input("Price")
-details = st.text_area("Details")
-image = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
+# -------------------- ADD PROPERTY --------------------
+with left:
+    st.header("Post Property")
 
-if st.button("Submit Property"):
-    if owner and location and price:
-        image_path = ""
+    owner = st.text_input("Owner Name")
+    location = st.text_input("Location")
+    price = st.text_input("Price")
+    details = st.text_area("Details")
+    images = st.file_uploader("Upload Images", accept_multiple_files=True)
 
-        if image:
-            image_path = f"uploads/{image.name}"
-            with open(image_path, "wb") as f:
-                f.write(image.getbuffer())
+    if st.button("Submit"):
+        if owner and location and price:
+            image_paths = []
 
-        c.execute("INSERT INTO properties (owner, location, price, details, image) VALUES (?, ?, ?, ?, ?)",
-                  (owner, location, price, details, image_path))
-        conn.commit()
+            for img in images:
+                path = f"uploads/{img.name}"
+                with open(path, "wb") as f:
+                    f.write(img.getbuffer())
+                image_paths.append(path)
 
-        st.success("Property Saved ✅")
-        st.rerun()
-    else:
-        st.warning("Fill required fields")
+            c.execute("INSERT INTO properties (owner, location, price, details, images) VALUES (?, ?, ?, ?, ?)",
+                      (owner, location, price, details, ",".join(image_paths)))
+            conn.commit()
 
-st.divider()
+            st.success("Property added")
+            st.rerun()
+        else:
+            st.warning("Fill required fields")
 
-# -------------------- SEARCH --------------------
-st.header("🔍 Search Property")
-search = st.text_input("Search by location")
+# -------------------- FILTERS --------------------
+with right:
+    st.header("Browse Properties")
 
-# -------------------- SHOW PROPERTIES --------------------
-st.header("🏘️ Available Properties")
+    colf1, colf2 = st.columns(2)
 
-if search:
-    c.execute("SELECT * FROM properties WHERE location LIKE ?", ('%' + search + '%',))
-else:
-    c.execute("SELECT * FROM properties")
+    with colf1:
+        search = st.text_input("Search location")
 
-data = c.fetchall()
+    with colf2:
+        max_price = st.text_input("Max price")
 
-for prop in data:
-    st.subheader(f"📍 {prop[2]}")
-    st.write(f"👤 Owner: {prop[1]}")
-    st.write(f"💰 Price: ₹{prop[3]}")
-    st.write(f"📝 {prop[4]}")
+    # Query
+    query = "SELECT * FROM properties WHERE 1=1"
+    params = []
 
-    if prop[5]:
-        st.image(prop[5], use_column_width=True)
+    if search:
+        query += " AND location LIKE ?"
+        params.append(f"%{search}%")
 
-    # WhatsApp button
-    whatsapp_url = f"https://wa.me/918590304889?text=Hi, I'm interested in property at {prop[2]}"
-    st.markdown(f"[📲 Enquire on WhatsApp]({whatsapp_url})")
+    if max_price:
+        query += " AND price <= ?"
+        params.append(max_price)
 
-    st.divider()
+    c.execute(query, params)
+    data = c.fetchall()
 
-# -------------------- LEADS --------------------
-st.header("📞 Get Buyer Leads")
+    # -------------------- GRID VIEW --------------------
+    cols = st.columns(2)
 
-name = st.text_input("Your Name")
-phone = st.text_input("Phone")
+    for i, prop in enumerate(data):
+        with cols[i % 2]:
+            st.markdown('<div class="property-card">', unsafe_allow_html=True)
 
-if st.button("Save Lead"):
-    if name and phone:
-        c.execute("INSERT INTO leads (name, phone) VALUES (?, ?)", (name, phone))
-        conn.commit()
-        st.success("Lead Saved ✅")
-    else:
-        st.warning("Fill all fields")
+            st.subheader(prop[2])
+            st.write(f"Owner: {prop[1]}")
+            st.write(f"Price: {prop[3]}")
+            st.write(prop[4])
 
-# -------------------- VIEW LEADS --------------------
-with st.expander("📋 View Leads"):
-    c.execute("SELECT * FROM leads")
-    leads = c.fetchall()
-    for lead in leads:
-        st.write(f"{lead[1]} - {lead[2]}")
+            # Multiple images
+            if prop[5]:
+                imgs = prop[5].split(",")
+                for img in imgs:
+                    if os.path.exists(img):
+                        st.image(img, use_column_width=True)
+
+            whatsapp_url = f"https://wa.me/918590304889?text=Interested in property at {prop[2]}"
+            st.markdown(f"[Contact on WhatsApp]({whatsapp_url})")
+
+            st.markdown("</div>", unsafe_allow_html=True)

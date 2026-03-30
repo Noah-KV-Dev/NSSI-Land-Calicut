@@ -30,14 +30,42 @@ if "favorites" not in st.session_state:
 # ================= STYLE =================
 st.markdown("""
 <style>
-body {background-color:#0e1117;}
-h1,h2,h3,h4,h5,h6,p,span,label {color:white !important;}
+/* FULL PAGE BACKGROUND */
+[data-testid="stAppViewContainer"] {
+    background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
+    url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/* TEXT WHITE */
+h1,h2,h3,h4,h5,h6,p,span,label {
+    color: white !important;
+}
+
+/* CARD EFFECT */
+.block-container {
+    background: rgba(0,0,0,0.5);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+/* BUTTON STYLE */
 .stButton>button {
-    background-color:#1f77b4;
-    color:white;
+    background-color: #1f77b4;
+    color: white;
+    border-radius: 8px;
+}
+
+/* INPUT FIELDS */
+input, textarea {
+    background-color: rgba(255,255,255,0.1) !important;
+    color: white !important;
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # ================= HEADER =================
 st.title("NSSI Land - Buy & Sell Properties")

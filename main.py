@@ -1,168 +1,144 @@
-# -*- coding: utf-8 -*-
 import streamlit as st
 import sqlite3
 import os
-import uuid
+import shutil
+import base64
 
-# -------------------- CONFIG --------------------
-st.set_page_config(page_title="NSSI Land", layout="wide")
+st.set_page_config(layout="wide")
 
-# -------------------- DATABASE --------------------
-conn = sqlite3.connect("nssi.db", check_same_thread=False)
+# ================= DATABASE =================
+conn = sqlite3.connect("properties.db", check_same_thread=False)
 c = conn.cursor()
 
 c.execute("""
 CREATE TABLE IF NOT EXISTS properties (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    owner TEXT,
-    location TEXT,
+    title TEXT,
     price TEXT,
+    location TEXT,
     details TEXT,
-    images TEXT
+    images TEXT,
+    video TEXT
 )
 """)
 
-try:
-    c.execute("ALTER TABLE properties ADD COLUMN images TEXT")
-except:
-    pass
+# ================= FAVORITES =================
+if "favorites" not in st.session_state:
+    st.session_state["favorites"] = []
 
-conn.commit()
-
-# -------------------- STYLE --------------------
+# ================= STYLE =================
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] {
-    background-image: url("https://images.unsplash.com/photo-1600607687939-ce8a6c25118c");
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-}
-
-/* DARK OVERLAY */
-[data-testid="stAppViewContainer"]::before {
-    content: "";
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.75);
-    z-index: -1;
-}
-
-/* WHITE TEXT */
-html, body, [class*="css"] {
-    color: white !important;
-}
-
-/* Highlight text */
-h1, h2, h3 {
-    color: #ffffff !important;
-    font-weight: bold;
-}
-
-/* Card */
-.card {
-    background: rgba(255,255,255,0.12);
-    padding: 20px;
-    border-radius: 15px;
-    margin-bottom: 25px;
-    border: 1px solid rgba(255,255,255,0.2);
-}
-
-/* Buttons */
-.stButton>button {
-    background: rgba(255,255,255,0.2);
-    color: white;
-    border: 1px solid white;
-}
+body {background-color:#0e1117;}
+h1,h2,h3,h4,h5,h6,p,span,label {color:white !important;}
 </style>
 """, unsafe_allow_html=True)
 
-st.title("NSSI Land Promoters - Calicut")
+# ================= HEADER =================
+st.title("NSSI Land - Buy & Sell Properties")
 
-# -------------------- UPLOAD FOLDER --------------------
-UPLOAD_DIR = "uploads"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+# ================= ADD PROPERTY =================
+st.header("Post Property")
 
-# -------------------- DEFAULT PAGE = BROWSE --------------------
-page = st.sidebar.radio(
-    "Menu",
-    ["Browse Properties", "Post Property"],
-    index=0   # 👈 opens Browse first
-)
+title = st.text_input("Title")
+price = st.text_input("Price")
+location = st.text_input("Location")
+details = st.text_area("Details")
 
-# ==================== BROWSE PAGE ====================
-if page == "Browse Properties":
-    st.header("Available Properties")
+images = st.file_uploader("Upload Images", accept_multiple_files=True)
+video = st.file_uploader("Upload Video", type=["mp4"])
 
-    # Force refresh latest data
+if st.button("Submit Property"):
+    image_paths = []
+    os.makedirs("uploads", exist_ok=True)
+
+    for img in images:
+        path = os.path.join("uploads", img.name)
+        with open(path, "wb") as f:
+            f.write(img.getbuffer())
+        image_paths.append(path)
+
+    video_path = ""
+    if video:
+        video_path = os.path.join("uploads", video.name)
+        with open(video_path, "wb") as f:
+            f.write(video.getbuffer())
+
+    c.execute("INSERT INTO properties (title, price, location, details, images, video) VALUES (?,?,?,?,?,?)",
+              (title, price, location, details, ",".join(image_paths), video_path))
     conn.commit()
-    c.execute("SELECT * FROM properties ORDER BY id DESC")
-    data = c.fetchall()
 
-    if not data:
-        st.info("No properties available")
+    st.success("Property Added Successfully")
+    st.rerun()
 
-    for prop in data:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+# ================= BROWSE =================
+st.header("Browse Properties")
 
-        st.subheader(prop[2])
-        st.write(f"Owner: {prop[1]}")
-        st.write(f"Price: {prop[3]}")
+c.execute("SELECT * FROM properties ORDER BY id DESC")
+data = c.fetchall()
+
+for prop in data:
+    st.markdown("---")
+    col1, col2 = st.columns([1,2])
+
+    # LEFT SIDE MEDIA
+    with col1:
+        # IMAGE SLIDER
+        if prop[5]:
+            imgs = prop[5].split(",")
+
+            key = f"slider_{prop[0]}"
+            if key not in st.session_state:
+                st.session_state[key] = 0
+
+            idx = st.session_state[key]
+
+            if os.path.exists(imgs[idx]):
+                st.image(imgs[idx], use_container_width=True)
+
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("Prev", key=f"p{prop[0]}"):
+                    st.session_state[key] = (idx-1) % len(imgs)
+                    st.rerun()
+            with c2:
+                if st.button("Next", key=f"n{prop[0]}"):
+                    st.session_state[key] = (idx+1) % len(imgs)
+                    st.rerun()
+
+        # VIDEO
+        if prop[6]:
+            if os.path.exists(prop[6]):
+                st.video(prop[6])
+
+    # RIGHT SIDE DETAILS
+    with col2:
+        st.subheader(prop[1])
+        st.write("Price:", prop[2])
+        st.write("Location:", prop[3])
         st.write(prop[4])
 
-        # -------- IMAGE FIX (IMPORTANT) --------
-        if prop[5]:
-            image_list = prop[5].split(",")
+        # ❤️ FAVORITE
+        fav_key = f"fav_{prop[0]}"
+        if st.button("❤️ Save", key=fav_key):
+            if prop[0] not in st.session_state["favorites"]:
+                st.session_state["favorites"].append(prop[0])
+                st.success("Saved to Favorites")
 
-            for img_path in image_list:
-                if os.path.exists(img_path):
-                    st.image(img_path, use_container_width=True)
-                else:
-                    st.error("Image not found (refresh or re-upload)")
+        # 📤 WHATSAPP SHARE
+        share_text = f"""Check this property:
+{prop[1]}
+Price: {prop[2]}
+Location: {prop[3]}
+"""
 
-        whatsapp_url = f"https://wa.me/918590304889?text=Interested in property at {prop[2]}"
-        st.markdown(f"[Contact on WhatsApp]({whatsapp_url})")
+        share_link = f"https://wa.me/?text={share_text.replace(' ', '%20')}"
+        st.markdown(f"[Share on WhatsApp]({share_link})")
 
-        st.markdown("</div>", unsafe_allow_html=True)
+# ================= FAVORITES SECTION =================
+st.header("Saved Properties ❤️")
 
-# ==================== POST PAGE ====================
-elif page == "Post Property":
-    st.header("Post Property")
+for prop in data:
+    if prop[0] in st.session_state["favorites"]:
+        st.markdown(f"✔ {prop[1]} - {prop[2]} - {prop[3]}")
 
-    owner = st.text_input("Owner Name")
-    location = st.text_input("Location")
-    price = st.text_input("Price")
-    details = st.text_area("Details")
-    images = st.file_uploader("Upload Images", accept_multiple_files=True)
-
-    if st.button("Submit"):
-        if owner and location and price:
-            image_paths = []
-
-            if images:
-                for img in images:
-                    ext = img.name.split(".")[-1]
-                    filename = f"{uuid.uuid4()}.{ext}"
-                    filepath = os.path.join(UPLOAD_DIR, filename)
-
-                    with open(filepath, "wb") as f:
-                        f.write(img.getbuffer())
-
-                    # SAVE FULL PATH
-                    image_paths.append(filepath)
-
-            c.execute(
-                "INSERT INTO properties (owner, location, price, details, images) VALUES (?, ?, ?, ?, ?)",
-                (owner, location, price, details, ",".join(image_paths))
-            )
-            conn.commit()
-
-            st.success("Property added successfully")
-
-            # FORCE REFRESH
-            st.rerun()
-
-        else:
-            st.warning("Please fill all required fields")

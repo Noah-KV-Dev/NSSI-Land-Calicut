@@ -141,6 +141,15 @@ if st.button("Submit Property"):
 
     st.success("Property Added Successfully")
     st.rerun()
+try:
+    c.execute("ALTER TABLE properties ADD COLUMN video TEXT")
+except:
+    pass
+
+try:
+    c.execute("ALTER TABLE properties ADD COLUMN created_at TEXT")
+except:
+    pass
 
 # ================= BROWSE =================
 st.header("Browse Properties")

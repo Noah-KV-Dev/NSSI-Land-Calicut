@@ -31,29 +31,6 @@ CREATE TABLE IF NOT EXISTS leads (
 
 conn.commit()
 
-# -------------------- ADMIN LOGIN --------------------
-ADMIN_USER = "admin"
-ADMIN_PASS = "1234"
-
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if not st.session_state.logged_in:
-    st.title("🔐 Admin Login")
-
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Login"):
-        if username == ADMIN_USER and password == ADMIN_PASS:
-            st.session_state.logged_in = True
-            st.success("Login Successful ✅")
-            st.rerun()
-        else:
-            st.error("Invalid Login ❌")
-
-    st.stop()
-
 # -------------------- TITLE --------------------
 st.title("🏡 NSSI Land Promoters - Calicut")
 
@@ -117,48 +94,7 @@ for prop in data:
     whatsapp_url = f"https://wa.me/918590304889?text=Hi, I'm interested in property at {prop[2]}"
     st.markdown(f"[📲 Enquire on WhatsApp]({whatsapp_url})")
 
-    col1, col2 = st.columns(2)
-
-    # DELETE
-    with col1:
-        if st.button(f"❌ Delete {prop[0]}"):
-            c.execute("DELETE FROM properties WHERE id=?", (prop[0],))
-            conn.commit()
-            st.warning("Deleted!")
-            st.rerun()
-
-    # EDIT
-    with col2:
-        if st.button(f"✏️ Edit {prop[0]}"):
-            st.session_state.edit_id = prop[0]
-
     st.divider()
-
-# -------------------- EDIT PROPERTY --------------------
-if "edit_id" in st.session_state:
-    st.header("✏️ Edit Property")
-
-    prop_id = st.session_state.edit_id
-    c.execute("SELECT * FROM properties WHERE id=?", (prop_id,))
-    prop = c.fetchone()
-
-    new_owner = st.text_input("Owner", value=prop[1])
-    new_location = st.text_input("Location", value=prop[2])
-    new_price = st.text_input("Price", value=prop[3])
-    new_details = st.text_area("Details", value=prop[4])
-
-    if st.button("Update Property"):
-        c.execute("""
-        UPDATE properties
-        SET owner=?, location=?, price=?, details=?
-        WHERE id=?
-        """, (new_owner, new_location, new_price, new_details, prop_id))
-
-        conn.commit()
-        st.success("Updated ✅")
-
-        del st.session_state.edit_id
-        st.rerun()
 
 # -------------------- LEADS --------------------
 st.header("📞 Get Buyer Leads")

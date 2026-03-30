@@ -2,6 +2,7 @@
 import streamlit as st
 import sqlite3
 import os
+import uuid
 
 # -------------------- CONFIG --------------------
 st.set_page_config(page_title="NSSI Land", layout="wide")
@@ -10,6 +11,7 @@ st.set_page_config(page_title="NSSI Land", layout="wide")
 conn = sqlite3.connect("nssi.db", check_same_thread=False)
 c = conn.cursor()
 
+# Safe table creation (latest structure)
 c.execute("""
 CREATE TABLE IF NOT EXISTS properties (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,6 +22,12 @@ CREATE TABLE IF NOT EXISTS properties (
     images TEXT
 )
 """)
+
+# Auto-fix old database (adds column if missing)
+try:
+    c.execute("ALTER TABLE properties ADD COLUMN images TEXT")
+except:
+    pass
 
 conn.commit()
 
@@ -50,65 +58,21 @@ html, body, [class*="css"] {
     background: rgba(255,255,255,0.08);
     padding: 15px;
     border-radius: 15px;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("NSSI Land Promoters - Calicut")
 
-# Create uploads folder
+# -------------------- UPLOAD FOLDER --------------------
 if not os.path.exists("uploads"):
     os.makedirs("uploads")
-# -------------------- WHITE TEXT STYLE --------------------
-st.markdown("""
-<style>
-
-/* All text white */
-html, body, [class*="css"] {
-    color: white !important;
-}
-
-/* Labels & headings */
-label, .stMarkdown, .stText, h1, h2, h3, h4, h5, h6 {
-    color: white !important;
-}
-
-/* Input fields text */
-input, textarea {
-    color: white !important;
-    background-color: rgba(0,0,0,0.4) !important;
-}
-
-/* Placeholder text */
-::placeholder {
-    color: #ddd !important;
-}
-
-/* Buttons */
-.stButton>button {
-    background-color: rgba(0,0,0,0.6);
-    color: white !important;
-    border: 1px solid white;
-}
-
-/* Sidebar (if used) */
-[data-testid="stSidebar"] {
-    color: white !important;
-}
-
-/* Expander */
-details {
-    color: white !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
 
 # -------------------- LAYOUT --------------------
 left, right = st.columns([1, 2])
 
-# -------------------- ADD PROPERTY --------------------
+# -------------------- POST PROPERTY --------------------
 with left:
     st.header("Post Property")
 
@@ -122,68 +86,52 @@ with left:
         if owner and location and price:
             image_paths = []
 
-            for img in images:
-                path = f"uploads/{img.name}"
-                with open(path, "wb") as f:
-                    f.write(img.getbuffer())
-                image_paths.append(path)
+            if images:
+                for img in images:
+                    # Unique filename (prevents overwrite error)
+                    ext = img.name.split(".")[-1]
+                    unique_name = f"{uuid.uuid4()}.{ext}"
+                    path = f"uploads/{unique_name}"
 
-            c.execute("INSERT INTO properties (owner, location, price, details, images) VALUES (?, ?, ?, ?, ?)",
-                      (owner, location, price, details, ",".join(image_paths)))
+                    with open(path, "wb") as f:
+                        f.write(img.getbuffer())
+
+                    image_paths.append(path)
+
+            c.execute(
+                "INSERT INTO properties (owner, location, price, details, images) VALUES (?, ?, ?, ?, ?)",
+                (owner, location, price, details, ",".join(image_paths))
+            )
             conn.commit()
 
-            st.success("Property added")
+            st.success("Property added successfully")
             st.rerun()
         else:
-            st.warning("Fill required fields")
+            st.warning("Please fill required fields")
 
-# -------------------- FILTERS --------------------
+# -------------------- PROPERTY FEED --------------------
 with right:
-    st.header("Browse Properties")
+    st.header("Latest Properties")
 
-    colf1, colf2 = st.columns(2)
-
-    with colf1:
-        search = st.text_input("Search location")
-
-    with colf2:
-        max_price = st.text_input("Max price")
-
-    # Query
-    query = "SELECT * FROM properties WHERE 1=1"
-    params = []
-
-    if search:
-        query += " AND location LIKE ?"
-        params.append(f"%{search}%")
-
-    if max_price:
-        query += " AND price <= ?"
-        params.append(max_price)
-
-    c.execute(query, params)
+    c.execute("SELECT * FROM properties ORDER BY id DESC")
     data = c.fetchall()
 
-    # -------------------- GRID VIEW --------------------
-    cols = st.columns(2)
+    for prop in data:
+        st.markdown('<div class="property-card">', unsafe_allow_html=True)
 
-    for i, prop in enumerate(data):
-        with cols[i % 2]:
-            st.markdown('<div class="property-card">', unsafe_allow_html=True)
+        st.subheader(prop[2])
+        st.write(f"Owner: {prop[1]}")
+        st.write(f"Price: {prop[3]}")
+        st.write(prop[4])
 
-            st.subheader(prop[2])
-            st.write(f"Owner: {prop[1]}")
-            st.write(f"Price: {prop[3]}")
-            st.write(prop[4])
+        # Show images
+        if prop[5]:
+            imgs = prop[5].split(",")
+            for img in imgs:
+                if os.path.exists(img):
+                    st.image(img, use_column_width=True)
 
-            # Multiple images
-            if prop[5]:
-                imgs = prop[5].split(",")
-                for img in imgs:
-                    if os.path.exists(img):
-                        st.image(img, use_column_width=True)
+        whatsapp_url = f"https://wa.me/918590304889?text=Interested in property at {prop[2]}"
+        st.markdown(f"[Contact on WhatsApp]({whatsapp_url})")
 
-            whatsapp_url = f"https://wa.me/918590304889?text=Interested in property at {prop[2]}"
-            st.markdown(f"[Contact on WhatsApp]({whatsapp_url})")
-
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)

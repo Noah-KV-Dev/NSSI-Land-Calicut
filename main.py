@@ -5,6 +5,32 @@ import os
 
 # -------------------- CONFIG --------------------
 st.set_page_config(page_title="NSSI Land", layout="centered")
+# -------------------- BACKGROUND IMAGE --------------------
+page_bg_img = """
+<style>
+[data-testid="stAppViewContainer"] {
+    background-image: url("https://images.unsplash.com/photo-1600585154340-be6161a56a0c");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+/* Make content readable */
+[data-testid="stHeader"], [data-testid="stToolbar"] {
+    background: rgba(0,0,0,0);
+}
+
+.main {
+    background-color: rgba(255, 255, 255, 0.85);
+    padding: 20px;
+    border-radius: 10px;
+}
+</style>
+"""
+
+st.markdown(page_bg_img, unsafe_allow_html=True)
+
 
 # -------------------- DATABASE --------------------
 conn = sqlite3.connect("nssi.db", check_same_thread=False)

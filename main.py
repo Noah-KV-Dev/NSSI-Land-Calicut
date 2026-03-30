@@ -60,6 +60,50 @@ st.title("NSSI Land Promoters - Calicut")
 # Create uploads folder
 if not os.path.exists("uploads"):
     os.makedirs("uploads")
+# -------------------- WHITE TEXT STYLE --------------------
+st.markdown("""
+<style>
+
+/* All text white */
+html, body, [class*="css"] {
+    color: white !important;
+}
+
+/* Labels & headings */
+label, .stMarkdown, .stText, h1, h2, h3, h4, h5, h6 {
+    color: white !important;
+}
+
+/* Input fields text */
+input, textarea {
+    color: white !important;
+    background-color: rgba(0,0,0,0.4) !important;
+}
+
+/* Placeholder text */
+::placeholder {
+    color: #ddd !important;
+}
+
+/* Buttons */
+.stButton>button {
+    background-color: rgba(0,0,0,0.6);
+    color: white !important;
+    border: 1px solid white;
+}
+
+/* Sidebar (if used) */
+[data-testid="stSidebar"] {
+    color: white !important;
+}
+
+/* Expander */
+details {
+    color: white !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 # -------------------- LAYOUT --------------------
 left, right = st.columns([1, 2])

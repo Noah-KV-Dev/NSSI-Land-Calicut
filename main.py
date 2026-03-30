@@ -35,32 +35,42 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 st.markdown("""
 <style>
 
+/* BACKGROUND */
 [data-testid="stAppViewContainer"] {
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
 }
 
-h1,h2,h3,h4,h5,h6,p,label {
+/* TEXT WHITE */
+h1,h2,h3,h4,h5,h6,p,span,label {
     color: white !important;
 }
 
+/* CARD */
 .card {
     background: rgba(255,255,255,0.05);
-    padding: 12px;
+    padding: 15px;
     border-radius: 15px;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
-.title {font-size:18px;font-weight:bold;}
+/* TEXT STYLES */
+.title {font-size:18px;font-weight:bold;color:white;}
 .price {color:#00ffcc;font-weight:bold;}
-.location {color:#ccc;font-size:13px;}
+.location {color:#cccccc;font-size:13px;}
+.details {color:white !important;}
 
+/* BUTTON */
 .stButton>button {
     background: linear-gradient(45deg,#00c6ff,#0072ff);
     color:white;
 }
 
+/* SIDEBAR */
 [data-testid="stSidebar"] {
     background:#111;
+}
+[data-testid="stSidebar"] * {
+    color:white !important;
 }
 
 </style>
@@ -134,7 +144,6 @@ elif menu == "Browse":
     c.execute("SELECT * FROM properties ORDER BY id DESC")
     data = c.fetchall()
 
-    # 2x2 MOBILE GRID
     cols = st.columns(2)
 
     for i, prop in enumerate(data):
@@ -145,34 +154,42 @@ elif menu == "Browse":
             images = prop[5].split(",") if prop[5] else []
             video = prop[6]
 
-            # 🔥 IMAGE SLIDER
-            if images and os.path.exists(images[0]):
-                selected = st.selectbox(
-                    "View Image",
-                    images,
-                    key=f"img{prop[0]}"
-                )
-                if os.path.exists(selected):
-                    st.image(selected, use_container_width=True)
+            # 🔥 SLIDE VIEW (TABS)
+            tab1, tab2, tab3 = st.tabs(["Images", "Video", "Details"])
 
-            # 🎥 VIDEO
-            if video and os.path.exists(video):
-                st.video(video)
+            # ---------- IMAGES ----------
+            with tab1:
+                if images:
+                    for img in images:
+                        if os.path.exists(img):
+                            st.image(img, use_container_width=True)
+                else:
+                    st.write("No Images")
 
-            # TEXT
-            st.markdown(f'<div class="title">{prop[1]}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="price">₹ {prop[2]}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="location">{prop[3]}</div>', unsafe_allow_html=True)
+            # ---------- VIDEO ----------
+            with tab2:
+                if video and os.path.exists(video):
+                    st.video(video)
+                else:
+                    st.write("No Video")
 
-            # BUTTONS
-            if st.button("❤️ Save", key=f"save{prop[0]}"):
-                if prop[0] not in st.session_state["favorites"]:
-                    st.session_state["favorites"].append(prop[0])
-                    st.success("Saved")
+            # ---------- DETAILS ----------
+            with tab3:
+                st.markdown(f"<div class='title'>{prop[1]}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='price'>₹ {prop[2]}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='location'>{prop[3]}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='details'>{prop[4]}</div>", unsafe_allow_html=True)
 
-            share = f"{prop[1]} ₹{prop[2]} {prop[3]}"
-            link = "https://wa.me/?text=" + share.replace(" ", "%20")
-            st.markdown(f"[📤 WhatsApp]({link})")
+                # ❤️ SAVE
+                if st.button("❤️ Save", key=f"save{prop[0]}"):
+                    if prop[0] not in st.session_state["favorites"]:
+                        st.session_state["favorites"].append(prop[0])
+                        st.success("Saved")
+
+                # 📤 SHARE
+                share = f"{prop[1]} ₹{prop[2]} {prop[3]}"
+                link = "https://wa.me/?text=" + share.replace(" ", "%20")
+                st.markdown(f"[📤 WhatsApp Share]({link})")
 
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -191,5 +208,6 @@ elif menu == "Saved":
             <div class="title">{prop[1]}</div>
             <div class="price">₹ {prop[2]}</div>
             <div class="location">{prop[3]}</div>
+            <div class="details">{prop[4]}</div>
             </div>
             """, unsafe_allow_html=True)

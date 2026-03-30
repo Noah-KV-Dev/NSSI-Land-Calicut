@@ -38,52 +38,80 @@ except:
 if "favorites" not in st.session_state:
     st.session_state["favorites"] = []
 
-# ================= STYLE =================
+# ================= PREMIUM STYLE =================
 st.markdown("""
 <style>
+
+/* BACKGROUND */
 [data-testid="stAppViewContainer"] {
-    background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
-    url("https://images.unsplash.com/photo-1599423300746-b62533397364");
-    background-size: cover;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
 }
 
+/* GLOBAL TEXT */
 h1,h2,h3,h4,h5,h6,p,span,label {
-    color: white !important;
+    color: #ffffff !important;
 }
 
-.block-container {
-    background: rgba(0,0,0,0.5);
-    border-radius: 10px;
+/* CARD STYLE */
+.card {
+    background: rgba(255,255,255,0.05);
+    padding: 15px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    margin-bottom: 20px;
 }
 
+/* TITLE */
+.title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+/* PRICE HIGHLIGHT */
+.price {
+    color: #00ffcc;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* LOCATION */
+.location {
+    color: #cccccc;
+    font-size: 14px;
+}
+
+/* BUTTON */
 .stButton>button {
-    background-color: #1f77b4;
+    background: linear-gradient(45deg, #00c6ff, #0072ff);
     color: white;
+    border-radius: 8px;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 # ================= HEADER =================
-st.title("NSSI Land - Calicut")
+st.markdown("<h1 style='text-align:center;'>NSSI Land - Calicut</h1>", unsafe_allow_html=True)
 
 # ================= MENU =================
-menu = st.sidebar.radio("Menu", ["Browse Properties", "Post Property", "Saved"])
+menu = st.sidebar.radio("Menu", ["Browse", "Post Property", "Saved"])
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ================= POST PROPERTY =================
 if menu == "Post Property":
-    st.markdown("<h2 style='color:black;'>Post Property</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:white;'>Post Property</h2>", unsafe_allow_html=True)
 
-    colA, colB = st.columns(2)
+    col1, col2 = st.columns(2)
 
-    with colA:
+    with col1:
         title = st.text_input("Title")
         price = st.text_input("Price")
 
-    with colB:
+    with col2:
         location = st.text_input("Location")
 
     details = st.text_area("Details")
@@ -91,14 +119,14 @@ if menu == "Post Property":
     images = st.file_uploader("Upload Images", accept_multiple_files=True)
     video = st.file_uploader("Upload Video", type=["mp4"])
 
-    if st.button("Submit Property"):
+    if st.button("Submit"):
         image_paths = []
 
         for img in images:
-            file_path = os.path.join(UPLOAD_DIR, f"{int(time.time())}_{img.name}")
-            with open(file_path, "wb") as f:
+            path = os.path.join(UPLOAD_DIR, f"{int(time.time())}_{img.name}")
+            with open(path, "wb") as f:
                 f.write(img.getbuffer())
-            image_paths.append(file_path)
+            image_paths.append(path)
 
         video_path = ""
         if video:
@@ -107,27 +135,29 @@ if menu == "Post Property":
                 f.write(video.getbuffer())
 
         c.execute("""
-            INSERT INTO properties (title, price, location, details, images, video, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO properties (title, price, location, details, images, video, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (title, price, location, details, ",".join(image_paths), video_path, str(time.time())))
 
         conn.commit()
-        st.success("Property Added")
+        st.success("Property Added Successfully")
         st.rerun()
 
-# ================= BROWSE (DEFAULT) =================
-elif menu == "Browse Properties":
+# ================= BROWSE =================
+elif menu == "Browse":
 
-    st.header("Browse Properties")
+    st.markdown("<h2>Browse Properties</h2>", unsafe_allow_html=True)
 
     c.execute("SELECT * FROM properties ORDER BY id DESC")
-    properties = c.fetchall()
+    data = c.fetchall()
 
-    # GRID VIEW (4 COLUMNS)
-    cols = st.columns(4)
+    # 2x2 GRID
+    cols = st.columns(2)
 
-    for i, prop in enumerate(properties):
-        with cols[i % 4]:
+    for i, prop in enumerate(data):
+        with cols[i % 2]:
+
+            st.markdown('<div class="card">', unsafe_allow_html=True)
 
             # IMAGE
             if prop[5]:
@@ -135,28 +165,29 @@ elif menu == "Browse Properties":
                 if os.path.exists(img):
                     st.image(img, use_container_width=True)
 
-            # DETAILS
-            st.subheader(prop[1])
-            st.write(prop[2])
-            st.write(prop[3])
+            # TEXT
+            st.markdown(f'<div class="title">{prop[1]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price">₹ {prop[2]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="location">{prop[3]}</div>', unsafe_allow_html=True)
 
-            # SAVE
-            if st.button("Save", key=f"fav_{prop[0]}"):
+            # BUTTONS
+            if st.button("Save", key=f"s{prop[0]}"):
                 st.session_state["favorites"].append(prop[0])
 
-            # WHATSAPP SHARE
-            share_text = f"{prop[1]} | {prop[2]} | {prop[3]}"
-            share_url = "https://wa.me/?text=" + share_text.replace(" ", "%20")
-            st.markdown(f"[Share]({share_url})")
+            share = f"{prop[1]} | {prop[2]} | {prop[3]}"
+            link = "https://wa.me/?text=" + share.replace(" ", "%20")
+            st.markdown(f"[Share on WhatsApp]({link})")
 
-# ================= FAVORITES =================
+            st.markdown('</div>', unsafe_allow_html=True)
+
+# ================= SAVED =================
 elif menu == "Saved":
 
-    st.header("Saved Properties")
+    st.markdown("<h2>Saved Properties</h2>", unsafe_allow_html=True)
 
     c.execute("SELECT * FROM properties")
-    properties = c.fetchall()
+    data = c.fetchall()
 
-    for prop in properties:
+    for prop in data:
         if prop[0] in st.session_state["favorites"]:
-            st.write(f"{prop[1]} - {prop[2]} - {prop[3]}")
+            st.write(f"{prop[1]} - ₹{prop[2]} - {prop[3]}")

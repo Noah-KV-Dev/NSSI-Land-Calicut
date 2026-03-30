@@ -11,7 +11,6 @@ st.set_page_config(page_title="NSSI Land", layout="wide")
 conn = sqlite3.connect("nssi.db", check_same_thread=False)
 c = conn.cursor()
 
-# Safe table creation (latest structure)
 c.execute("""
 CREATE TABLE IF NOT EXISTS properties (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,7 +22,7 @@ CREATE TABLE IF NOT EXISTS properties (
 )
 """)
 
-# Auto-fix old database (adds column if missing)
+# Fix old DB
 try:
     c.execute("ALTER TABLE properties ADD COLUMN images TEXT")
 except:
@@ -54,7 +53,7 @@ html, body, [class*="css"] {
     color: white !important;
 }
 
-.property-card {
+.card {
     background: rgba(255,255,255,0.08);
     padding: 15px;
     border-radius: 15px;
@@ -64,61 +63,17 @@ html, body, [class*="css"] {
 """, unsafe_allow_html=True)
 
 st.title("NSSI Land Promoters - Calicut")
-# -------------------- WHITE TEXT STYLE --------------------
-st.markdown("""
-<style>
-
-/* All text white */
-html, body, [class*="css"] {
-    color: white !important;
-}
-
-/* Labels & headings */
-label, .stMarkdown, .stText, h1, h2, h3, h4, h5, h6 {
-    color: white !important;
-}
-
-/* Input fields text */
-input, textarea {
-    color: white !important;
-    background-color: rgba(0,0,0,0.4) !important;
-}
-
-/* Placeholder text */
-::placeholder {
-    color: #ddd !important;
-}
-
-/* Buttons */
-.stButton>button {
-    background-color: rgba(0,0,0,0.6);
-    color: white !important;
-    border: 1px solid white;
-}
-
-/* Sidebar (if used) */
-[data-testid="stSidebar"] {
-    color: white !important;
-}
-
-/* Expander */
-details {
-    color: white !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
 
 # -------------------- UPLOAD FOLDER --------------------
-if not os.path.exists("uploads"):
-    os.makedirs("uploads")
+UPLOAD_DIR = "uploads"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
-# -------------------- LAYOUT --------------------
-left, right = st.columns([1, 2])
+# -------------------- PAGE SWITCH --------------------
+page = st.sidebar.radio("Menu", ["Post Property", "Browse Properties"])
 
-# -------------------- POST PROPERTY --------------------
-with left:
+# ==================== POST PAGE ====================
+if page == "Post Property":
     st.header("Post Property")
 
     owner = st.text_input("Owner Name")
@@ -133,15 +88,15 @@ with left:
 
             if images:
                 for img in images:
-                    # Unique filename (prevents overwrite error)
                     ext = img.name.split(".")[-1]
-                    unique_name = f"{uuid.uuid4()}.{ext}"
-                    path = f"uploads/{unique_name}"
+                    filename = f"{uuid.uuid4()}.{ext}"
+                    filepath = os.path.join(UPLOAD_DIR, filename)
 
-                    with open(path, "wb") as f:
+                    # Save image correctly
+                    with open(filepath, "wb") as f:
                         f.write(img.getbuffer())
 
-                    image_paths.append(path)
+                    image_paths.append(filepath)
 
             c.execute(
                 "INSERT INTO properties (owner, location, price, details, images) VALUES (?, ?, ?, ?, ?)",
@@ -154,27 +109,33 @@ with left:
         else:
             st.warning("Please fill required fields")
 
-# -------------------- PROPERTY FEED --------------------
-with right:
-    st.header("Latest Properties")
+# ==================== BROWSE PAGE ====================
+elif page == "Browse Properties":
+    st.header("Browse Properties")
 
     c.execute("SELECT * FROM properties ORDER BY id DESC")
     data = c.fetchall()
 
+    if not data:
+        st.info("No properties added yet")
+
     for prop in data:
-        st.markdown('<div class="property-card">', unsafe_allow_html=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
 
         st.subheader(prop[2])
         st.write(f"Owner: {prop[1]}")
         st.write(f"Price: {prop[3]}")
         st.write(prop[4])
 
-        # Show images
+        # FIX: Correct image display
         if prop[5]:
-            imgs = prop[5].split(",")
-            for img in imgs:
-                if os.path.exists(img):
-                    st.image(img, use_column_width=True)
+            image_list = prop[5].split(",")
+
+            for img_path in image_list:
+                if os.path.exists(img_path):
+                    st.image(img_path, use_column_width=True)
+                else:
+                    st.warning(f"Image not found: {img_path}")
 
         whatsapp_url = f"https://wa.me/918590304889?text=Interested in property at {prop[2]}"
         st.markdown(f"[Contact on WhatsApp]({whatsapp_url})")

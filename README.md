@@ -1,0 +1,1 @@
+﻿# NSSI Land Promoters Calicut

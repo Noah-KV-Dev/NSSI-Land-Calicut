@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS properties (
 )
 """)
 
-# Fix old DB
 try:
     c.execute("ALTER TABLE properties ADD COLUMN images TEXT")
 except:
@@ -40,24 +39,41 @@ st.markdown("""
     background-attachment: fixed;
 }
 
+/* DARK OVERLAY */
 [data-testid="stAppViewContainer"]::before {
     content: "";
     position: fixed;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.75);
     z-index: -1;
 }
 
+/* WHITE TEXT */
 html, body, [class*="css"] {
     color: white !important;
 }
 
+/* Highlight text */
+h1, h2, h3 {
+    color: #ffffff !important;
+    font-weight: bold;
+}
+
+/* Card */
 .card {
-    background: rgba(255,255,255,0.08);
-    padding: 15px;
+    background: rgba(255,255,255,0.12);
+    padding: 20px;
     border-radius: 15px;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Buttons */
+.stButton>button {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid white;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -69,11 +85,50 @@ UPLOAD_DIR = "uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
-# -------------------- PAGE SWITCH --------------------
-page = st.sidebar.radio("Menu", ["Post Property", "Browse Properties"])
+# -------------------- DEFAULT PAGE = BROWSE --------------------
+page = st.sidebar.radio(
+    "Menu",
+    ["Browse Properties", "Post Property"],
+    index=0   # 👈 opens Browse first
+)
+
+# ==================== BROWSE PAGE ====================
+if page == "Browse Properties":
+    st.header("Available Properties")
+
+    # Force refresh latest data
+    conn.commit()
+    c.execute("SELECT * FROM properties ORDER BY id DESC")
+    data = c.fetchall()
+
+    if not data:
+        st.info("No properties available")
+
+    for prop in data:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+
+        st.subheader(prop[2])
+        st.write(f"Owner: {prop[1]}")
+        st.write(f"Price: {prop[3]}")
+        st.write(prop[4])
+
+        # -------- IMAGE FIX (IMPORTANT) --------
+        if prop[5]:
+            image_list = prop[5].split(",")
+
+            for img_path in image_list:
+                if os.path.exists(img_path):
+                    st.image(img_path, use_container_width=True)
+                else:
+                    st.error("Image not found (refresh or re-upload)")
+
+        whatsapp_url = f"https://wa.me/918590304889?text=Interested in property at {prop[2]}"
+        st.markdown(f"[Contact on WhatsApp]({whatsapp_url})")
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ==================== POST PAGE ====================
-if page == "Post Property":
+elif page == "Post Property":
     st.header("Post Property")
 
     owner = st.text_input("Owner Name")
@@ -92,10 +147,10 @@ if page == "Post Property":
                     filename = f"{uuid.uuid4()}.{ext}"
                     filepath = os.path.join(UPLOAD_DIR, filename)
 
-                    # Save image correctly
                     with open(filepath, "wb") as f:
                         f.write(img.getbuffer())
 
+                    # SAVE FULL PATH
                     image_paths.append(filepath)
 
             c.execute(
@@ -105,39 +160,9 @@ if page == "Post Property":
             conn.commit()
 
             st.success("Property added successfully")
+
+            # FORCE REFRESH
             st.rerun()
+
         else:
-            st.warning("Please fill required fields")
-
-# ==================== BROWSE PAGE ====================
-elif page == "Browse Properties":
-    st.header("Browse Properties")
-
-    c.execute("SELECT * FROM properties ORDER BY id DESC")
-    data = c.fetchall()
-
-    if not data:
-        st.info("No properties added yet")
-
-    for prop in data:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-
-        st.subheader(prop[2])
-        st.write(f"Owner: {prop[1]}")
-        st.write(f"Price: {prop[3]}")
-        st.write(prop[4])
-
-        # FIX: Correct image display
-        if prop[5]:
-            image_list = prop[5].split(",")
-
-            for img_path in image_list:
-                if os.path.exists(img_path):
-                    st.image(img_path, use_column_width=True)
-                else:
-                    st.warning(f"Image not found: {img_path}")
-
-        whatsapp_url = f"https://wa.me/918590304889?text=Interested in property at {prop[2]}"
-        st.markdown(f"[Contact on WhatsApp]({whatsapp_url})")
-
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.warning("Please fill all required fields")

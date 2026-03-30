@@ -65,6 +65,32 @@ input, textarea {
 }
 </style>
 """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+
+/* POST PROPERTY SECTION TEXT BLACK */
+section[data-testid="stSidebar"] * {
+    color: black !important;
+}
+
+/* MAIN FORM AREA (POST PROPERTY) */
+div[data-testid="stForm"], 
+div[data-testid="stVerticalBlock"] div:has(label:contains("Title")) {
+    color: black !important;
+}
+
+/* INPUT LABELS BLACK */
+label {
+    color: black !important;
+}
+
+/* INPUT TEXT BLACK */
+input, textarea {
+    color: black !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 
 # ================= HEADER =================
